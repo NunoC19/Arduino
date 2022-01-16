@@ -1,0 +1,77 @@
+#define DHTPIN A1
+#define DHTTYPE DHT22
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
+DHT dht(DHTPIN, DHTTYPE);
+
+int LED_VM = 13;
+int LED_VD = 8;
+
+int RELE = 2;
+float Volts = 0;
+float Temperatura = 0;
+
+void setup() {
+    dht.begin();
+    pinMode(RELE, OUTPUT);
+    digitalWrite(RELE,LOW);
+  //  pinMode(LED_VM,OUTPUT);
+   // pinMode(LED_VD,OUTPUT);
+    pinMode(RELE, OUTPUT);
+    Serial.begin(9600);
+
+}
+
+void loop() 
+{
+float Temperatura = dht.readTemperature();
+
+if(isnan(Temperatura))
+{
+  Serial.println("falha ao ler o DHT");
+}
+else
+       {
+        Serial.print("Temperatura: ");
+        Serial.print(Temperatura);
+        Serial.println("ºC");
+        delay(2000);
+       }
+if(Temperatura >= 32)
+        {
+           digitalWrite(RELE, LOW);
+           Serial.println("Refrigeracao Ativada");
+          
+        }
+      
+       if(Temperatura < 20.0)
+        {
+           digitalWrite(RELE,HIGH);
+           Serial.println("Refrigeracao Desativada");
+        }
+      
+        if(Temperatura > 28)
+        {
+           digitalWrite(LED_VM,HIGH);
+           digitalWrite(LED_VD,LOW);
+        }
+        
+   
+        if(Temperatura <= 24)
+        {
+           digitalWrite(LED_VM,LOW);
+           digitalWrite(LED_VD,HIGH);
+        }
+        else
+    {
+        Serial.println("Modo Stop Ativado");
+      digitalWrite(LED_VM,HIGH);
+        digitalWrite(LED_VD,HIGH);
+      digitalWrite(RELE, LOW);
+    }
+  
+  delay(300);
+  
+}
+     
