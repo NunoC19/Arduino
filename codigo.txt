@@ -1,77 +1,105 @@
-#define DHTPIN A1
-#define DHTTYPE DHT22
+#include <ArduinoWiFiServer.h>
+#include <BearSSLHelpers.h>
+#include <CertStoreBearSSL.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266WiFiAP.h>
+#include <ESP8266WiFiGeneric.h>
+#include <ESP8266WiFiGratuitous.h>
+#include <ESP8266WiFiMulti.h>
+#include <ESP8266WiFiScan.h>
+#include <ESP8266WiFiSTA.h>
+#include <ESP8266WiFiType.h>
+#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
+#include <WiFiClientSecureBearSSL.h>
+#include <WiFiServer.h>
+#include <WiFiServerSecure.h>
+#include <WiFiServerSecureBearSSL.h>
+#include <WiFiUdp.h> 
+#include <ArduinoJson.h>
+#include <ESP8266HTTPClient.h>
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 #include <DHT_U.h>
+
+
+#define DHTPIN D6
+#define DHTTYPE DHT22
+
+ 
+//dados de autenticação na rede wifi
+
+const char* ssid = "ENTAWiFi";
+const char* password = "ENTAWiFi";
+
 DHT dht(DHTPIN, DHTTYPE);
 
-int LED_VM = 13;
-int LED_VD = 8;
+float temperatura = 0;
+float humidade = 0;
 
-int RELE = 2;
-float Volts = 0;
-float Temperatura = 0;
 
 void setup() {
-    dht.begin();
-    pinMode(RELE, OUTPUT);
-    digitalWrite(RELE,LOW);
-  //  pinMode(LED_VM,OUTPUT);
-   // pinMode(LED_VD,OUTPUT);
-    pinMode(RELE, OUTPUT);
-    Serial.begin(9600);
-
+  Serial.begin(115200);
+  //pinMode(6,OUTPUT);
+  //digitalWrite(6,LOW);
+  dht.begin();
+  WiFiServer server(80);
+  delay(10);
+  //Connect to WiFi network
+  Serial.print("Connecting to WIFI");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+     delay(500);
+     Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected");
+  //Start the server
+  server.begin();
+  Serial.println("Server started");
+  // Print the IP address
+  Serial.print("Use this URL to connect: ");
+  Serial.print(WiFi.localIP());
+  Serial.println("/");
 }
 
-void loop() 
-{
-float Temperatura = dht.readTemperature();
-
-if(isnan(Temperatura))
-{
-  Serial.println("falha ao ler o DHT");
-}
-else
-       {
-        Serial.print("Temperatura: ");
-        Serial.print(Temperatura);
-        Serial.println("ºC");
-        delay(2000);
-       }
-if(Temperatura >= 32)
-        {
-           digitalWrite(RELE, LOW);
-           Serial.println("Refrigeracao Ativada");
-          
-        }
-      
-       if(Temperatura < 20.0)
-        {
-           digitalWrite(RELE,HIGH);
-           Serial.println("Refrigeracao Desativada");
-        }
-      
-        if(Temperatura > 28)
-        {
-           digitalWrite(LED_VM,HIGH);
-           digitalWrite(LED_VD,LOW);
-        }
-        
-   
-        if(Temperatura <= 24)
-        {
-           digitalWrite(LED_VM,LOW);
-           digitalWrite(LED_VD,HIGH);
-        }
-        else
-    {
-        Serial.println("Modo Stop Ativado");
-      digitalWrite(LED_VM,HIGH);
-        digitalWrite(LED_VD,HIGH);
-      digitalWrite(RELE, LOW);
-    }
+void loop() {
+  temperatura = dht.readTemperature();
+  humidade = dht.readHumidity();
+  if(isnan(temperatura) ||isnan(tumidade))
+  {
+    Serial.println("falha ao ler o DHT");
+    return;
+  }
+  //Serial.print("Humidade:  %");
+  //Serial.println(Humidade);
+  //Serial.print("Temperatura: ºC");
+  //Serial.println(Temperatura);
+  if(Temperatura >= 22) {
+    Serial.println("Refrigeracao Ativada");
+  }
+  if(Temperatura < 21){
+    Serial.println("Refrigeracao Desativada");
+  }   
+  StaticJsonDocument<300> doc;
+  doc["idArduino"] = "Ard-13";
+  doc["temp"] = (int)temperatura;
+  doc["hum"] = (int)humidade;
+  String json;
+  serializeJson(doc,json);
+  serializeJsonPretty(doc, Serial);
+  Serial.println("");
   
-  delay(300);
-  
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+  http.begin(client,"https://regulafrigo.herokuapp.com/update");
+  http.addHeader("Content-Type", "application/json");
+  http.POST(json);
+  Serial.print(http.getString());
+  Serial.println();
+  //Disconnect client
+  http.end();
+  delay(2000);
 }
-     
